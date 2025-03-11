@@ -130,10 +130,11 @@ export default function Home() {
     }, []);
 
     const addPokemon = async () => {
-        if (pokemonName.trim() !== "") {
+        const trimmedName = pokemonName.trim();
+        if (trimmedName !== "") {
             const { data, error } = await supabase
                 .from("pokemon_counters")
-                .insert([{ name: pokemonName, count: 0, created_at: new Date() }])
+                .insert([{ name: trimmedName, count: 0, created_at: new Date() }])
                 .select()
                 .order("created_at", { ascending: false });
             if (error) {
