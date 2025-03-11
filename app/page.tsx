@@ -1,103 +1,86 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import Layout from "@/components/Layout";
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    const [pokemon, setPokemon] = useState("");
+    const [counters, setCounters] = useState<{ id: string; name: string; count: number; created_at: string }[]>([]);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
-  );
+    // Pokémon-Liste aus Supabase nach created_at absteigend laden
+    useEffect(() => {
+        const fetchPokemon = async () => {
+            let { data, error } = await supabase
+                .from("pokemon_counters")
+                .select("*")
+                .order("created_at", { ascending: false }); // Neueste zuerst
+
+            if (error) console.error("Fehler beim Laden:", error);
+            else setCounters(data || []);
+        };
+
+        fetchPokemon();
+    }, []);
+
+    const addPokemon = async () => {
+        if (pokemon.trim() !== "") {
+            const { data, error } = await supabase
+                .from("pokemon_counters")
+                .insert([{ name: pokemon, count: 0, created_at: new Date() }])
+                .select()
+                .order("created_at", { ascending: false });
+
+            if (error) console.error(error);
+            else setCounters(data || []);
+            setPokemon("");
+        }
+    };
+
+    const updateCounter = async (id: string, delta: number) => {
+        const updatedPokemon = counters.find((p) => p.id === id);
+        if (!updatedPokemon) return;
+
+        const newCount = updatedPokemon.count + delta;
+        const { error } = await supabase
+            .from("pokemon_counters")
+            .update({ count: newCount })
+            .eq("id", id);
+
+        if (error) console.error(error);
+        else {
+            setCounters((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, count: newCount } : p))
+            );
+        }
+    };
+
+    return (
+        <Layout>
+            <div className="max-w-lg mx-auto">
+                <h1 className="text-2xl font-bold mb-4 text-center">Shiny Pokémon Counter</h1>
+
+                <div className="flex space-x-2 mb-4">
+                    <Input type="text" value={pokemon} onChange={(e) => setPokemon(e.target.value)} placeholder="Pokémon Name" />
+                    <Button onClick={addPokemon} className="bg-blue-600 text-white">Hinzufügen</Button>
+                </div>
+
+                <div className="space-y-3">
+                    {counters.map((p) => (
+                        <Card key={p.id} className="p-4 flex justify-between items-center">
+                            <span className="text-lg font-medium">{p.name}</span>
+                            <div className="flex space-x-2">
+                                <Button onClick={() => updateCounter(p.id, -1)} className="bg-red-500 text-white" disabled={p.count === 0}>-</Button>
+                                <span className="text-lg">{p.count}</span>
+                                <Button onClick={() => updateCounter(p.id, +1)} className="bg-green-500 text-white">+</Button>
+                            </div>
+                        </Card>
+                    ))}
+                </div>
+            </div>
+        </Layout>
+    );
 }
