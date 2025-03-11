@@ -6,7 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Trash2 } from "lucide-react"; // Mülleimer-Icon
+import { Trash2 } from "lucide-react";
+import {
+    Select,
+    SelectTrigger,
+    SelectValue,
+    SelectContent,
+    SelectItem,
+} from "@/components/ui/select";
 import pokemon from "pokemon";
 
 // Statische Arrays für die Übersetzungen
@@ -18,11 +25,19 @@ function PokemonCard({
                          pokemonEntry,
                          englishName,
                          updateCounter,
+                         updateMethod,
                          setDeleteTarget,
                      }: {
-    pokemonEntry: { id: string; name: string; count: number; created_at: string };
+    pokemonEntry: {
+        id: string;
+        name: string;
+        count: number;
+        created_at: string;
+        method: string;
+    };
     englishName: string;
     updateCounter: (id: string, delta: number) => void;
+    updateMethod: (id: string, newMethod: string) => void;
     setDeleteTarget: (target: { id: string; name: string } | null) => void;
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
@@ -43,10 +58,7 @@ function PokemonCard({
     }, [englishName]);
 
     return (
-        <Card
-            key={pokemonEntry.id}
-            className="relative p-5 pr-16 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in"
-        >
+        <Card className="relative p-5 flex flex-col sm:flex-row justify-between items-center bg-white shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in">
             {/* Mülleimer-Icon */}
             <button
                 className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
@@ -57,7 +69,8 @@ function PokemonCard({
                 <Trash2 size={20} />
             </button>
 
-            <div className="flex items-center">
+            {/* Linker Bereich: Bild, Name, englischer Name und Methode */}
+            <div className="flex-1 flex items-center">
                 {spriteUrl && (
                     <img
                         src={spriteUrl}
@@ -72,10 +85,29 @@ function PokemonCard({
                     {englishName && (
                         <span className="block text-sm text-gray-500">{englishName}</span>
                     )}
+                    {/* Dropdown für Methode – unter den Namen */}
+                    <div className="mt-2">
+                        <Select
+                            value={pokemonEntry.method || ""}
+                            onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
+                        >
+                            <SelectTrigger className="w-[130px] cursor-pointer">
+                                <SelectValue placeholder="Methode..." />
+                                <SelectValue placeholder="Methode..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Masuda" className="cursor-pointer">Masuda</SelectItem>
+                                <SelectItem value="Egg" className="cursor-pointer">Ei</SelectItem>
+                                <SelectItem value="Reset" className="cursor-pointer">Startreset</SelectItem>
+                                <SelectItem value="Chain" className="cursor-pointer">Chain</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex items-center space-x-3 mt-3 sm:mt-0">
+            {/* Rechter Bereich: Counter */}
+            <div className="mt-3 sm:mt-0 flex items-center space-x-3">
                 <button
                     onClick={() => updateCounter(pokemonEntry.id, -1)}
                     className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -83,7 +115,6 @@ function PokemonCard({
                 >
                     −
                 </button>
-                {/* Feste Größe für den Counter, damit alle Zähler gleich groß sind */}
                 <span className="w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md">
           {pokemonEntry.count}
         </span>
@@ -101,7 +132,13 @@ function PokemonCard({
 export default function Home() {
     const [pokemonName, setPokemonName] = useState("");
     const [counters, setCounters] = useState<
-        { id: string; name: string; count: number; created_at: string }[]
+        {
+            id: string;
+            name: string;
+            count: number;
+            created_at: string;
+            method: string;
+        }[]
     >([]);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(
         null
@@ -134,7 +171,15 @@ export default function Home() {
         if (trimmedName !== "") {
             const { data, error } = await supabase
                 .from("pokemon_counters")
-                .insert([{ name: trimmedName, count: 0, created_at: new Date() }])
+                .insert([
+                    {
+                        name: trimmedName,
+                        count: 0,
+                        created_at: new Date(),
+                        // Beim Hinzufügen wird kein Wert für "methode" gesetzt, daher initial leer
+                        method: "",
+                    },
+                ])
                 .select()
                 .order("created_at", { ascending: false });
             if (error) {
@@ -162,6 +207,20 @@ export default function Home() {
         }
     };
 
+    // Funktion zum Aktualisieren der Methode in der Datenbank
+    const updateMethod = async (id: string, newMethod: string) => {
+        const { error } = await supabase
+            .from("pokemon_counters")
+            .update({ method: newMethod })
+            .eq("id", id);
+        if (error) console.error("Fehler beim Aktualisieren der Methode:", error);
+        else {
+            setCounters((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, method: newMethod } : p))
+            );
+        }
+    };
+
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         const { error } = await supabase
@@ -183,7 +242,7 @@ export default function Home() {
                     Shiny Pokémon Counter
                 </h1>
 
-                {/* Eingabe für neues Pokémon */}
+                {/* Formular für neues Pokémon */}
                 <div className="flex space-x-2 mb-6">
                     <Input
                         type="text"
@@ -194,7 +253,7 @@ export default function Home() {
                     />
                     <Button
                         onClick={addPokemon}
-                        className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg transition-transform transform hover:scale-105 hover:bg-blue-700 cursor-pointer"
+                        className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg transition-transform transform hover:scale-105 hover:bg-blue-700 cursor-pointer flex items-center"
                     >
                         Hinzufügen
                     </Button>
@@ -210,6 +269,7 @@ export default function Home() {
                                 pokemonEntry={p}
                                 englishName={englishName}
                                 updateCounter={updateCounter}
+                                updateMethod={updateMethod}
                                 setDeleteTarget={setDeleteTarget}
                             />
                         );
