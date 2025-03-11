@@ -14,7 +14,7 @@ export default function Home() {
     // Pokémon-Liste aus Supabase nach created_at absteigend laden
     useEffect(() => {
         const fetchPokemon = async () => {
-            let { data, error } = await supabase
+            const { data, error } = await supabase
                 .from("pokemon_counters")
                 .select("*")
                 .order("created_at", { ascending: false }); // Neueste zuerst
