@@ -26,6 +26,9 @@ importers:
       next:
         specifier: 15.2.2
         version: 15.2.2(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
+      pokemon:
+        specifier: ^3.3.0
+        version: 3.3.0
       react:
         specifier: ^19.0.0
         version: 19.0.0
@@ -1380,6 +1383,10 @@ packages:
     resolution: {integrity: sha512-M7BAV6Rlcy5u+m6oPhAPFgJTzAioX/6B0DxyvDlo9l8+T3nLKbrczg2WLUyzd45L8RqfUMyGPzekbMvX2Ldkwg==}
     engines: {node: '>=12'}
 
+  pokemon@3.3.0:
+    resolution: {integrity: sha512-0/wSI1F1SsM0zc/WH+96z1SpfRjRqjUw/Z/31mX+D7BmJhajkhR/Jg8hZD5DhsBhNTOMVm+u/BwA5wJ+dt3j1g==}
+    engines: {node: '>=18'}
+
   possible-typed-array-names@1.1.0:
     resolution: {integrity: sha512-/+5VFTchJDoVj3bhoqi6UeymcD00DAwb1nJwamzPvHEszJ4FpF6SNNbUbOS8yI56qHzdV8eK0qEfOSiodkTdxg==}
     engines: {node: '>= 0.4'}
@@ -1648,6 +1655,14 @@ packages:
 
   undici-types@6.19.8:
     resolution: {integrity: sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw==}
+
+  unique-random-array@2.0.0:
+    resolution: {integrity: sha512-xR87O95fZ7hljw84J8r1YDXrvffPLWN513BNOP4Bv0KcgG5dyEUrHwsvP7mVAOKg4Y80uqRbpUk0GKr8il70qg==}
+    engines: {node: '>=8'}
+
+  unique-random@2.1.0:
+    resolution: {integrity: sha512-iQ1ZgWac3b8YxGThecQFRQiqgk6xFERRwHZIWeVVsqlbmgCRl0PY13R4mUkodNgctmg5b5odG1nyW/IbOxQTqg==}
+    engines: {node: '>=6'}
 
   uri-js@4.4.1:
     resolution: {integrity: sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==}
@@ -3155,6 +3170,10 @@ snapshots:
 
   picomatch@4.0.2: {}
 
+  pokemon@3.3.0:
+    dependencies:
+      unique-random-array: 2.0.0
+
   possible-typed-array-names@1.1.0: {}
 
   postcss@8.4.31:
@@ -3497,6 +3516,12 @@ snapshots:
       which-boxed-primitive: 1.1.1
 
   undici-types@6.19.8: {}
+
+  unique-random-array@2.0.0:
+    dependencies:
+      unique-random: 2.1.0
+
+  unique-random@2.1.0: {}
 
   uri-js@4.4.1:
     dependencies:
