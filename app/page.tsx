@@ -93,7 +93,6 @@ function PokemonCard({
                         >
                             <SelectTrigger className="w-[130px] cursor-pointer">
                                 <SelectValue placeholder="Methode..." />
-                                <SelectValue placeholder="Methode..." />
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="Masuda" className="cursor-pointer">Masuda</SelectItem>
