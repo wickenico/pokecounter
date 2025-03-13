@@ -34,7 +34,7 @@ interface PokemonEntry {
     status: string; // "open" oder "closed"
 }
 
-// Komponente für eine einzelne Pokémon-Karte
+// Einzelne Pokémon-Karte
 function PokemonCard({
                          pokemonEntry,
                          englishName,
@@ -52,11 +52,10 @@ function PokemonCard({
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
 
-    // Zustand für das Bearbeiten des Counters
+    // Für das manuelle Bearbeiten des Counters
     const [isEditingCount, setIsEditingCount] = useState(false);
     const [tempCount, setTempCount] = useState(String(pokemonEntry.count));
 
-    // Immer, wenn sich der Counter ändert, übernehmen wir ihn in tempCount
     useEffect(() => {
         setTempCount(String(pokemonEntry.count));
     }, [pokemonEntry.count]);
@@ -75,7 +74,7 @@ function PokemonCard({
         }
     }, [englishName]);
 
-    // Neuer Wert im Input übernehmen
+    // Neuen Zählerwert übernehmen
     const saveNewCount = () => {
         const newValue = parseInt(tempCount, 10);
         if (isNaN(newValue)) {
@@ -89,10 +88,10 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
-    // Ist der Eintrag abgeschlossen?
+    // Status "closed" => Karte ist beendet
     const isClosed = pokemonEntry.status === "closed";
 
-    // Feuerwerk initialisieren, wenn isClosed true wird
+    // Feuerwerk-Logik
     useEffect(() => {
         if (isClosed) {
             const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
@@ -117,7 +116,6 @@ function PokemonCard({
             });
 
             fireworks.start();
-            // Nach 3 Sekunden stoppen
             const timer = setTimeout(() => fireworks.stop(), 3000);
 
             return () => {
@@ -141,7 +139,7 @@ function PokemonCard({
                 <Trash2 size={20} />
             </button>
 
-            {/* Feuerwerk-Container */}
+            {/* Feuerwerk, wenn status=closed */}
             {isClosed && (
                 <div
                     id={`fireworks-${pokemonEntry.id}`}
@@ -149,43 +147,26 @@ function PokemonCard({
                 />
             )}
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                {/* Linke Seite */}
-                <div className="flex items-center gap-4">
+            {/* Neue Struktur: Links Sprite + Namen, Rechts Counter + Methode + Button */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+                {/* Linke Spalte */}
+                <div className="flex flex-col items-center">
                     {spriteUrl && (
                         <img
                             src={spriteUrl}
                             alt={`Shiny sprite of ${englishName}`}
-                            className="w-36 h-36"
+                            className="w-36 h-36 mb-2"
                         />
                     )}
-                    <div className="flex flex-col">
-                        <span className="text-lg font-semibold text-gray-800">{pokemonEntry.name}</span>
-                        {englishName && (
-                            <span className="block text-sm text-gray-500">{englishName}</span>
-                        )}
-                        <div className="mt-4">
-                            <Select
-                                value={pokemonEntry.method || ""}
-                                onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
-                                disabled={isClosed}
-                            >
-                                <SelectTrigger className="w-[130px] cursor-pointer">
-                                    <SelectValue placeholder="Methode auswählen" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="Masuda">Masuda</SelectItem>
-                                    <SelectItem value="Egg">Ei</SelectItem>
-                                    <SelectItem value="Reset">Softreset</SelectItem>
-                                    <SelectItem value="Chain">Chain</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                    <span className="text-lg font-semibold text-gray-800">{pokemonEntry.name}</span>
+                    {englishName && (
+                        <span className="text-sm text-gray-500">{englishName}</span>
+                    )}
                 </div>
 
-                {/* Rechter Bereich: Counter & Button */}
-                <div className="flex flex-col items-center space-y-3">
+                {/* Rechte Spalte */}
+                <div className="flex flex-col items-center gap-4">
+                    {/* Counter (Minus / Count / Plus) */}
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={() => updateCounter(pokemonEntry.id, -1)}
@@ -195,7 +176,6 @@ function PokemonCard({
                             −
                         </button>
 
-                        {/* Counter-Bereich */}
                         {isEditingCount && !isClosed ? (
                             <input
                                 type="number"
@@ -233,7 +213,26 @@ function PokemonCard({
                         </button>
                     </div>
 
-                    {/* Neuer Button: Suche beenden */}
+                    {/* Methode-Dropdown */}
+                    <div className="w-[130px]">
+                        <Select
+                            value={pokemonEntry.method || ""}
+                            onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
+                            disabled={isClosed}
+                        >
+                            <SelectTrigger className="cursor-pointer">
+                                <SelectValue placeholder="Methode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Masuda">Masuda</SelectItem>
+                                <SelectItem value="Egg">Ei</SelectItem>
+                                <SelectItem value="Reset">Softreset</SelectItem>
+                                <SelectItem value="Chain">Chain</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Suche beenden-Button (nur wenn status=open) */}
                     {!isClosed && (
                         <Button
                             onClick={() => closeSearch(pokemonEntry.id)}
@@ -496,8 +495,8 @@ export default function Home() {
                             Pokémon freilassen?
                         </h2>
                         <p className="text-sm text-gray-700 text-center my-3">
-                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis
-                            entlassen möchtest?
+                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis entlassen
+                            möchtest?
                             <br />
                             <span className="italic text-gray-500">
                 &#34;Ein wildes {deleteTarget.name} verschwand in hohem Gras...&#34;
