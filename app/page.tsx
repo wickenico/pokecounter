@@ -78,7 +78,7 @@ function PokemonCard({
                     <img
                         src={spriteUrl}
                         alt={`Shiny sprite of ${englishName}`}
-                        className="w-24 h-24 mr-4"
+                        className="w-36 h-36 mr-4"
                     />
                 )}
                 <div className="flex flex-col">
