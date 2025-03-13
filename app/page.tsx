@@ -152,11 +152,15 @@ export default function Home() {
     // Wenn er bereits in der englischen Liste existiert, wird er direkt zurückgegeben.
     const getEnglishName = (inputName: string) => {
         const lowerName = inputName.toLowerCase();
-        const indexInGerman = germanPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
+        const indexInGerman = germanPokemonNames.findIndex(
+            (name) => name.toLowerCase() === lowerName
+        );
         if (indexInGerman !== -1) {
             return englishPokemonNames[indexInGerman];
         }
-        const indexInEnglish = englishPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
+        const indexInEnglish = englishPokemonNames.findIndex(
+            (name) => name.toLowerCase() === lowerName
+        );
         if (indexInEnglish !== -1) {
             return englishPokemonNames[indexInEnglish];
         }
@@ -271,6 +275,11 @@ export default function Home() {
                             list="pokemonSuggestions"
                             value={pokemonName}
                             onChange={(e) => setPokemonName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    addPokemon();
+                                }
+                            }}
                             placeholder="Pokémon eingeben..."
                             className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:ring-2 focus:ring-blue-500"
                         />
