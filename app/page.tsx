@@ -89,7 +89,7 @@ function PokemonCard({
                         <span className="block text-sm text-gray-500">{englishName}</span>
                     )}
                     {/* Dropdown für Methode unter dem englischen Namen */}
-                    <div className="mt-2">
+                    <div className="mt-10">
                         <Select
                             value={pokemonEntry.method || ""}
                             onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
