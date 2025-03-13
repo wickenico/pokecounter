@@ -23,7 +23,6 @@ const englishPokemonNames = pokemon.all();
 // Kombinierte Liste (als Set, um Duplikate zu vermeiden)
 const allPokemonNames = [...new Set([...germanPokemonNames, ...englishPokemonNames])];
 
-// Komponente für die einzelnen Pokémon-Karten
 function PokemonCard({
                          pokemonEntry,
                          englishName,
@@ -45,6 +44,15 @@ function PokemonCard({
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
 
+    // Lokaler Zustand für das direkte Bearbeiten des Counters
+    const [isEditingCount, setIsEditingCount] = useState(false);
+    const [tempCount, setTempCount] = useState<string>(String(pokemonEntry.count));
+
+    useEffect(() => {
+        // Falls sich der count von außen ändert, aktualisieren wir auch tempCount
+        setTempCount(String(pokemonEntry.count));
+    }, [pokemonEntry.count]);
+
     useEffect(() => {
         if (englishName) {
             fetch(`https://pokeapi.co/api/v2/pokemon/${englishName.toLowerCase()}`)
@@ -54,78 +62,114 @@ function PokemonCard({
                         setSpriteUrl(data.sprites.front_shiny);
                     }
                 })
-                .catch((err) =>
-                    console.error("Fehler beim Laden des Shiny Sprites:", err)
-                );
+                .catch((err) => console.error("Fehler beim Laden des Shiny Sprites:", err));
         }
     }, [englishName]);
 
+    // Speichert den neuen Zählerwert
+    const saveNewCount = () => {
+        const newValue = parseInt(tempCount, 10);
+        if (isNaN(newValue)) {
+            // Falls keine gültige Zahl eingegeben, revert
+            setTempCount(String(pokemonEntry.count));
+        } else {
+            // updateCounter erwartet ein Delta
+            const delta = newValue - pokemonEntry.count;
+            if (delta !== 0) {
+                updateCounter(pokemonEntry.id, delta);
+            }
+        }
+        setIsEditingCount(false);
+    };
+
     return (
-        <Card className="relative p-5 flex flex-col sm:flex-row justify-between items-center bg-white shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in">
+        <Card className="relative p-5 bg-white shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in">
             {/* Mülleimer-Icon */}
             <button
                 className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
-                onClick={() =>
-                    setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })
-                }
+                onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
             >
                 <Trash2 size={20} />
             </button>
 
-            {/* Linker Bereich: Bild, Name, englischer Name und Methode */}
-            <div className="flex-1 flex items-center">
-                {spriteUrl && (
-                    <img
-                        src={spriteUrl}
-                        alt={`Shiny sprite of ${englishName}`}
-                        className="w-36 h-36 mr-4"
-                    />
-                )}
-                <div className="flex flex-col">
-          <span className="text-lg font-semibold text-gray-800">
-            {pokemonEntry.name}
-          </span>
-                    {englishName && (
-                        <span className="block text-sm text-gray-500">{englishName}</span>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                {/* Linke Seite: Sprite, Name, englischer Name, Dropdown */}
+                <div className="flex items-center gap-4">
+                    {spriteUrl && (
+                        <img
+                            src={spriteUrl}
+                            alt={`Shiny sprite of ${englishName}`}
+                            className="w-36 h-36"
+                        />
                     )}
-                    {/* Dropdown für Methode unter dem englischen Namen */}
-                    <div className="mt-10">
-                        <Select
-                            value={pokemonEntry.method || ""}
-                            onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
-                        >
-                            <SelectTrigger className="w-[130px] cursor-pointer">
-                                <SelectValue placeholder="Methode auswählen" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Masuda">Masuda</SelectItem>
-                                <SelectItem value="Egg">Ei</SelectItem>
-                                <SelectItem value="Reset">Softreset</SelectItem>
-                                <SelectItem value="Chain">Chain</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <div className="flex flex-col">
+            <span className="text-lg font-semibold text-gray-800">
+              {pokemonEntry.name}
+            </span>
+                        {englishName && (
+                            <span className="block text-sm text-gray-500">{englishName}</span>
+                        )}
+                        <div className="mt-10">
+                            <Select
+                                value={pokemonEntry.method || ""}
+                                onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
+                            >
+                                <SelectTrigger className="w-[130px] cursor-pointer">
+                                    <SelectValue placeholder="Methode auswählen" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Masuda">Masuda</SelectItem>
+                                    <SelectItem value="Egg">Ei</SelectItem>
+                                    <SelectItem value="Reset">Softreset</SelectItem>
+                                    <SelectItem value="Chain">Chain</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Rechter Bereich: Counter */}
-            <div className="mt-3 sm:mt-0 flex items-center space-x-3">
-                <button
-                    onClick={() => updateCounter(pokemonEntry.id, -1)}
-                    className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    disabled={pokemonEntry.count === 0}
-                >
-                    −
-                </button>
-                <span className="w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md">
-          {pokemonEntry.count}
-        </span>
-                <button
-                    onClick={() => updateCounter(pokemonEntry.id, +1)}
-                    className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
-                >
-                    +
-                </button>
+                {/* Rechter Bereich: Counter */}
+                <div className="flex items-center space-x-3">
+                    <button
+                        onClick={() => updateCounter(pokemonEntry.id, -1)}
+                        className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+                        disabled={pokemonEntry.count === 0}
+                    >
+                        −
+                    </button>
+
+                    {/* Counter-Bereich, entweder readonly Span oder Input */}
+                    {isEditingCount ? (
+                        <input
+                            type="number"
+                            autoFocus
+                            value={tempCount}
+                            onChange={(e) => setTempCount(e.target.value)}
+                            onBlur={saveNewCount}
+                            onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                    e.currentTarget.blur(); // Löst onBlur aus
+                                }
+                            }}
+                            className="w-20 h-10 text-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                    ) : (
+                        <span
+                            onClick={() => setIsEditingCount(true)}
+                            className="w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md cursor-pointer hover:bg-gray-200"
+                            title="Klicken, um manuell zu ändern"
+                        >
+              {pokemonEntry.count}
+            </span>
+                    )}
+
+                    <button
+                        onClick={() => updateCounter(pokemonEntry.id, +1)}
+                        className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
+                    >
+                        +
+                    </button>
+                </div>
             </div>
         </Card>
     );
@@ -134,22 +178,12 @@ function PokemonCard({
 export default function Home() {
     const [pokemonName, setPokemonName] = useState("");
     const [counters, setCounters] = useState<
-        {
-            id: string;
-            name: string;
-            count: number;
-            created_at: string;
-            method: string;
-        }[]
+        { id: string; name: string; count: number; created_at: string; method: string }[]
     >([]);
-    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(
-        null
-    );
+    const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
 
     // Hilfsfunktion: Gibt den offiziellen englischen Namen zurück.
-    // Wenn der eingegebene Name in der deutschen Liste ist, wird der entsprechende englische Name zurückgegeben.
-    // Wenn er bereits in der englischen Liste existiert, wird er direkt zurückgegeben.
     const getEnglishName = (inputName: string) => {
         const lowerName = inputName.toLowerCase();
         const indexInGerman = germanPokemonNames.findIndex(
@@ -177,23 +211,25 @@ export default function Home() {
             if (error) console.error("Fehler beim Laden:", error);
             else setCounters(data || []);
         };
-
         fetchPokemon();
     }, []);
 
+    // Fügt ein neues Pokémon hinzu
     const addPokemon = async () => {
         const trimmedName = pokemonName.trim();
         if (trimmedName !== "") {
-            // Überprüfen, ob der eingegebene Name in der kombinierten Liste existiert (Case-insensitiv)
-            const allowed = allPokemonNames.map((name) => name.toLowerCase());
+            // Validierung
+            const allowed = [...new Set([...germanPokemonNames, ...englishPokemonNames])].map((n) =>
+                n.toLowerCase()
+            );
             if (!allowed.includes(trimmedName.toLowerCase())) {
                 setErrorMessage(
                     "Oh nein! Dieses Pokémon ist so geheim, dass selbst Professor Eich es nicht im Pokedex finden konnte. Bitte gib einen bekannten Namen ein!"
                 );
                 return;
             }
-            // Gültig → Fehlermeldung zurücksetzen
             setErrorMessage("");
+
             const { data, error } = await supabase
                 .from("pokemon_counters")
                 .insert([
@@ -201,7 +237,6 @@ export default function Home() {
                         name: trimmedName,
                         count: 0,
                         created_at: new Date(),
-                        // Beim Hinzufügen wird kein Wert für "method" gesetzt, daher initial leer
                         method: "",
                     },
                 ])
@@ -216,10 +251,12 @@ export default function Home() {
         }
     };
 
+    // Erhöht/Erniedrigt den Counter um delta
     const updateCounter = async (id: string, delta: number) => {
         const updatedPokemon = counters.find((p) => p.id === id);
         if (!updatedPokemon) return;
         const newCount = updatedPokemon.count + delta;
+
         const { error } = await supabase
             .from("pokemon_counters")
             .update({ count: newCount })
@@ -232,20 +269,22 @@ export default function Home() {
         }
     };
 
-    // Funktion zum Aktualisieren der Methode in der Datenbank
+    // Aktualisiert die Methode in der Datenbank
     const updateMethod = async (id: string, newMethod: string) => {
         const { error } = await supabase
             .from("pokemon_counters")
             .update({ method: newMethod })
             .eq("id", id);
-        if (error) console.error("Fehler beim Aktualisieren der Methode:", error);
-        else {
+        if (error) {
+            console.error("Fehler beim Aktualisieren der Methode:", error);
+        } else {
             setCounters((prev) =>
                 prev.map((p) => (p.id === id ? { ...p, method: newMethod } : p))
             );
         }
     };
 
+    // Bestätigt das Löschen
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         const { error } = await supabase
@@ -267,7 +306,6 @@ export default function Home() {
                     Shiny Pokémon Counter
                 </h1>
 
-                {/* Formular für neues Pokémon mit Datalist für Vorschläge */}
                 <div className="flex flex-col space-y-2 mb-6">
                     <div className="flex space-x-2">
                         <Input
@@ -290,9 +328,7 @@ export default function Home() {
                             <Plus size={16} className="mr-2" /> Hinzufügen
                         </Button>
                     </div>
-                    {errorMessage && (
-                        <p className="text-red-600 text-sm">{errorMessage}</p>
-                    )}
+                    {errorMessage && <p className="text-red-600 text-sm">{errorMessage}</p>}
                     <datalist id="pokemonSuggestions">
                         {allPokemonNames.map((name) => (
                             <option key={name} value={name} />
@@ -326,8 +362,9 @@ export default function Home() {
                             Pokémon freilassen?
                         </h2>
                         <p className="text-sm text-gray-700 text-center my-3">
-                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis
-                            entlassen möchtest? <br />
+                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis entlassen
+                            möchtest?
+                            <br />
                             <span className="italic text-gray-500">
                 &#34;Ein wildes {deleteTarget.name} verschwand in hohem Gras...&#34;
               </span>
