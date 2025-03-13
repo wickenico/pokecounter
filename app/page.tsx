@@ -217,6 +217,14 @@ export default function Home() {
     // Fügt ein neues Pokémon hinzu
     const addPokemon = async () => {
         const trimmedName = pokemonName.trim();
+
+        if (!trimmedName) {
+            setErrorMessage(
+                "Hey Trainer, ohne Namen kann dein Pokémon nicht auftauchen! Versuch's nochmal."
+            );
+            return;
+        }
+
         if (trimmedName !== "") {
             // Validierung
             const allowed = [...new Set([...germanPokemonNames, ...englishPokemonNames])].map((n) =>
