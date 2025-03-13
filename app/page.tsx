@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Trash2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import {
     Select,
     SelectTrigger,
@@ -78,27 +78,27 @@ function PokemonCard({
                         className="w-24 h-24 mr-4"
                     />
                 )}
-                <div>
+                <div className="flex flex-col">
           <span className="text-lg font-semibold text-gray-800">
             {pokemonEntry.name}
           </span>
                     {englishName && (
                         <span className="block text-sm text-gray-500">{englishName}</span>
                     )}
-                    {/* Dropdown für Methode – unter den Namen */}
+                    {/* Dropdown für Methode unter dem englischen Namen */}
                     <div className="mt-2">
                         <Select
                             value={pokemonEntry.method || ""}
                             onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
                         >
                             <SelectTrigger className="w-[130px] cursor-pointer">
-                                <SelectValue placeholder="Methode..." />
+                                <SelectValue placeholder="Methode auswählen" />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="Masuda" className="cursor-pointer">Masuda</SelectItem>
-                                <SelectItem value="Egg" className="cursor-pointer">Ei</SelectItem>
-                                <SelectItem value="Reset" className="cursor-pointer">Startreset</SelectItem>
-                                <SelectItem value="Chain" className="cursor-pointer">Chain</SelectItem>
+                                <SelectItem value="Masuda">Masuda</SelectItem>
+                                <SelectItem value="Egg">Ei</SelectItem>
+                                <SelectItem value="Reset">Startreset</SelectItem>
+                                <SelectItem value="Chain">Chain</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -142,13 +142,22 @@ export default function Home() {
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(
         null
     );
+    const [errorMessage, setErrorMessage] = useState("");
 
-    // Hilfsfunktion: Gibt den englischen Namen anhand des deutschen Namens zurück
-    const getEnglishName = (germanName: string) => {
-        const index = germanPokemonNames.findIndex(
-            (name) => name.toLowerCase() === germanName.toLowerCase()
-        );
-        return index !== -1 ? englishPokemonNames[index] : "";
+    // Hilfsfunktion: Gibt den offiziellen englischen Namen zurück.
+    // Wenn der eingegebene Name in der deutschen Liste ist, wird der entsprechende englische Name zurückgegeben.
+    // Wenn er bereits in der englischen Liste existiert, wird er direkt zurückgegeben.
+    const getEnglishName = (inputName: string) => {
+        const lowerName = inputName.toLowerCase();
+        const indexInGerman = germanPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
+        if (indexInGerman !== -1) {
+            return englishPokemonNames[indexInGerman];
+        }
+        const indexInEnglish = englishPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
+        if (indexInEnglish !== -1) {
+            return englishPokemonNames[indexInEnglish];
+        }
+        return "";
     };
 
     // Laden der Einträge aus Supabase
@@ -168,6 +177,20 @@ export default function Home() {
     const addPokemon = async () => {
         const trimmedName = pokemonName.trim();
         if (trimmedName !== "") {
+            // Überprüfen, ob der eingegebene Name in der deutschen ODER in der englischen Liste existiert (Case-insensitiv)
+            const allowedGerman = germanPokemonNames.map((name) => name.toLowerCase());
+            const allowedEnglish = englishPokemonNames.map((name) => name.toLowerCase());
+            if (
+                !allowedGerman.includes(trimmedName.toLowerCase()) &&
+                !allowedEnglish.includes(trimmedName.toLowerCase())
+            ) {
+                setErrorMessage(
+                    "Oh nein! Dieses Pokémon ist so geheim, dass selbst Professor Eich es nicht im Pokedex finden konnte. Bitte gib einen bekannten Namen ein!"
+                );
+                return;
+            }
+            // Gültig → Fehlermeldung zurücksetzen
+            setErrorMessage("");
             const { data, error } = await supabase
                 .from("pokemon_counters")
                 .insert([
@@ -175,7 +198,7 @@ export default function Home() {
                         name: trimmedName,
                         count: 0,
                         created_at: new Date(),
-                        // Beim Hinzufügen wird kein Wert für "methode" gesetzt, daher initial leer
+                        // Beim Hinzufügen wird kein Wert für "method" gesetzt, daher initial leer
                         method: "",
                     },
                 ])
@@ -242,20 +265,25 @@ export default function Home() {
                 </h1>
 
                 {/* Formular für neues Pokémon */}
-                <div className="flex space-x-2 mb-6">
-                    <Input
-                        type="text"
-                        value={pokemonName}
-                        onChange={(e) => setPokemonName(e.target.value)}
-                        placeholder="Pokémon eingeben..."
-                        className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:ring-2 focus:ring-blue-500"
-                    />
-                    <Button
-                        onClick={addPokemon}
-                        className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg transition-transform transform hover:scale-105 hover:bg-blue-700 cursor-pointer flex items-center"
-                    >
-                        Hinzufügen
-                    </Button>
+                <div className="flex flex-col space-y-2 mb-6">
+                    <div className="flex space-x-2">
+                        <Input
+                            type="text"
+                            value={pokemonName}
+                            onChange={(e) => setPokemonName(e.target.value)}
+                            placeholder="Pokémon eingeben..."
+                            className="border border-gray-300 rounded-lg shadow-sm px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                        />
+                        <Button
+                            onClick={addPokemon}
+                            className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg transition-transform transform hover:scale-105 hover:bg-blue-700 cursor-pointer flex items-center"
+                        >
+                            <Plus size={16} className="mr-2" /> Hinzufügen
+                        </Button>
+                    </div>
+                    {errorMessage && (
+                        <p className="text-red-600 text-sm">{errorMessage}</p>
+                    )}
                 </div>
 
                 {/* Liste der Pokémon mit Countern */}
