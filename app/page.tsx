@@ -14,6 +14,7 @@ import {
     SelectContent,
     SelectItem,
 } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import pokemon from "pokemon";
 import { Fireworks } from "fireworks-js";
 
@@ -33,6 +34,7 @@ interface PokemonEntry {
     status: string; // "open" oder "closed"
 }
 
+// Komponente für eine einzelne Pokémon-Karte
 function PokemonCard({
                          pokemonEntry,
                          englishName,
@@ -45,7 +47,7 @@ function PokemonCard({
     englishName: string;
     updateCounter: (id: string, delta: number) => void;
     updateMethod: (id: string, newMethod: string) => void;
-    closeSearch: (id: string) => void; // Neu: Suche abschließen
+    closeSearch: (id: string) => void;
     setDeleteTarget: (target: { id: string; name: string } | null) => void;
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
@@ -54,6 +56,7 @@ function PokemonCard({
     const [isEditingCount, setIsEditingCount] = useState(false);
     const [tempCount, setTempCount] = useState(String(pokemonEntry.count));
 
+    // Immer, wenn sich der Counter ändert, übernehmen wir ihn in tempCount
     useEffect(() => {
         setTempCount(String(pokemonEntry.count));
     }, [pokemonEntry.count]);
@@ -86,7 +89,7 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
-    // Karte ist "closed"?
+    // Ist der Eintrag abgeschlossen?
     const isClosed = pokemonEntry.status === "closed";
 
     // Feuerwerk initialisieren, wenn isClosed true wird
@@ -95,9 +98,7 @@ function PokemonCard({
             const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
             if (!container) return;
 
-            // fireworks.js konfigurieren
             const fireworks = new Fireworks(container, {
-                // Minimale Konfiguration
                 hue: { min: 0, max: 345 },
                 delay: { min: 15, max: 15 },
                 acceleration: 1.05,
@@ -194,6 +195,7 @@ function PokemonCard({
                             −
                         </button>
 
+                        {/* Counter-Bereich */}
                         {isEditingCount && !isClosed ? (
                             <input
                                 type="number"
@@ -252,10 +254,16 @@ export default function Home() {
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
 
+    // Filter-States für "Offen" & "Beendet"
+    const [filterOpenActive, setFilterOpenActive] = useState(false);
+    const [filterClosedActive, setFilterClosedActive] = useState(false);
+
     // Hilfsfunktion: Gibt den offiziellen englischen Namen zurück.
     const getEnglishName = (inputName: string) => {
         const lowerName = inputName.toLowerCase();
-        const indexInGerman = germanPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
+        const indexInGerman = germanPokemonNames.findIndex(
+            (name) => name.toLowerCase() === lowerName
+        );
         if (indexInGerman !== -1) {
             return englishPokemonNames[indexInGerman];
         }
@@ -300,7 +308,6 @@ export default function Home() {
         }
         setErrorMessage("");
 
-        // Neu: status="open"
         const { data, error } = await supabase
             .from("pokemon_counters")
             .insert([
@@ -354,7 +361,7 @@ export default function Home() {
         }
     };
 
-    // Suche abschließen (status = "closed")
+    // Suche abschließen
     const closeSearch = async (id: string) => {
         const entry = counters.find((p) => p.id === id);
         if (!entry) return;
@@ -379,12 +386,21 @@ export default function Home() {
             .from("pokemon_counters")
             .delete()
             .eq("id", deleteTarget.id);
-        if (error) console.error("Fehler beim Löschen:", error);
+        if (error) console.error(error);
         else {
             setCounters((prev) => prev.filter((p) => p.id !== deleteTarget.id));
         }
         setDeleteTarget(null);
     };
+
+    // Filter-Logik
+    let filteredCounters = counters;
+    if (filterOpenActive && !filterClosedActive) {
+        filteredCounters = counters.filter((p) => p.status === "open");
+    } else if (!filterOpenActive && filterClosedActive) {
+        filteredCounters = counters.filter((p) => p.status === "closed");
+    }
+    // Wenn beide oder keine => alle
 
     return (
         <Layout>
@@ -424,9 +440,38 @@ export default function Home() {
                     </datalist>
                 </div>
 
-                {/* Liste der Pokémon */}
+                {/* Filter-Badges */}
+                <div className="flex space-x-2 mb-4">
+                    {/* Badge für "Offen" */}
+                    <Badge
+                        variant="outline"
+                        className={`cursor-pointer px-3 py-1 rounded-full transition-colors ${
+                            filterOpenActive
+                                ? "bg-blue-600 text-white border-blue-600 hover:bg-blue-500"
+                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setFilterOpenActive(!filterOpenActive)}
+                    >
+                        Offen
+                    </Badge>
+
+                    {/* Badge für "Beendet" */}
+                    <Badge
+                        variant="outline"
+                        className={`cursor-pointer px-3 py-1 rounded-full transition-colors ${
+                            filterClosedActive
+                                ? "bg-yellow-500 text-white border-yellow-600 hover:bg-yellow-500"
+                                : "border-gray-300 text-gray-700 hover:bg-gray-100"
+                        }`}
+                        onClick={() => setFilterClosedActive(!filterClosedActive)}
+                    >
+                        Beendet
+                    </Badge>
+                </div>
+
+                {/* Gefilterte Liste */}
                 <div className="space-y-4">
-                    {counters.map((p) => {
+                    {filteredCounters.map((p) => {
                         const englishName = getEnglishName(p.name);
                         return (
                             <PokemonCard
@@ -451,8 +496,8 @@ export default function Home() {
                             Pokémon freilassen?
                         </h2>
                         <p className="text-sm text-gray-700 text-center my-3">
-                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis entlassen
-                            möchtest?
+                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis
+                            entlassen möchtest?
                             <br />
                             <span className="italic text-gray-500">
                 &#34;Ein wildes {deleteTarget.name} verschwand in hohem Gras...&#34;
