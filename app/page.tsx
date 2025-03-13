@@ -15,6 +15,7 @@ import {
     SelectItem,
 } from "@/components/ui/select";
 import pokemon from "pokemon";
+import { Fireworks } from "fireworks-js";
 
 // Statische Arrays für die Übersetzungen
 const germanPokemonNames = pokemon.all("de");
@@ -23,42 +24,47 @@ const englishPokemonNames = pokemon.all();
 // Kombinierte Liste (als Set, um Duplikate zu vermeiden)
 const allPokemonNames = [...new Set([...germanPokemonNames, ...englishPokemonNames])];
 
+interface PokemonEntry {
+    id: string;
+    name: string;
+    count: number;
+    created_at: string;
+    method: string;
+    status: string; // "open" oder "closed"
+}
+
 function PokemonCard({
                          pokemonEntry,
                          englishName,
                          updateCounter,
                          updateMethod,
+                         closeSearch,
                          setDeleteTarget,
                      }: {
-    pokemonEntry: {
-        id: string;
-        name: string;
-        count: number;
-        created_at: string;
-        method: string;
-    };
+    pokemonEntry: PokemonEntry;
     englishName: string;
     updateCounter: (id: string, delta: number) => void;
     updateMethod: (id: string, newMethod: string) => void;
+    closeSearch: (id: string) => void; // Neu: Suche abschließen
     setDeleteTarget: (target: { id: string; name: string } | null) => void;
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
 
-    // Lokaler Zustand für das direkte Bearbeiten des Counters
+    // Zustand für das Bearbeiten des Counters
     const [isEditingCount, setIsEditingCount] = useState(false);
-    const [tempCount, setTempCount] = useState<string>(String(pokemonEntry.count));
+    const [tempCount, setTempCount] = useState(String(pokemonEntry.count));
 
     useEffect(() => {
-        // Falls sich der count von außen ändert, aktualisieren wir auch tempCount
         setTempCount(String(pokemonEntry.count));
     }, [pokemonEntry.count]);
 
+    // Shiny-Sprite laden
     useEffect(() => {
         if (englishName) {
             fetch(`https://pokeapi.co/api/v2/pokemon/${englishName.toLowerCase()}`)
                 .then((res) => res.json())
                 .then((data) => {
-                    if (data && data.sprites && data.sprites.front_shiny) {
+                    if (data?.sprites?.front_shiny) {
                         setSpriteUrl(data.sprites.front_shiny);
                     }
                 })
@@ -66,14 +72,12 @@ function PokemonCard({
         }
     }, [englishName]);
 
-    // Speichert den neuen Zählerwert
+    // Neuer Wert im Input übernehmen
     const saveNewCount = () => {
         const newValue = parseInt(tempCount, 10);
         if (isNaN(newValue)) {
-            // Falls keine gültige Zahl eingegeben, revert
             setTempCount(String(pokemonEntry.count));
         } else {
-            // updateCounter erwartet ein Delta
             const delta = newValue - pokemonEntry.count;
             if (delta !== 0) {
                 updateCounter(pokemonEntry.id, delta);
@@ -82,8 +86,52 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
+    // Karte ist "closed"?
+    const isClosed = pokemonEntry.status === "closed";
+
+    // Feuerwerk initialisieren, wenn isClosed true wird
+    useEffect(() => {
+        if (isClosed) {
+            const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
+            if (!container) return;
+
+            // fireworks.js konfigurieren
+            const fireworks = new Fireworks(container, {
+                // Minimale Konfiguration
+                hue: { min: 0, max: 345 },
+                delay: { min: 15, max: 15 },
+                acceleration: 1.05,
+                friction: 0.98,
+                gravity: 1,
+                particles: 50,
+                explosion: 5,
+                autoresize: true,
+                brightness: { min: 50, max: 80 },
+                boundaries: {
+                    x: 0,
+                    y: 0,
+                    width: container.clientWidth,
+                    height: container.clientHeight,
+                },
+            });
+
+            fireworks.start();
+            // Nach 3 Sekunden stoppen
+            const timer = setTimeout(() => fireworks.stop(), 3000);
+
+            return () => {
+                fireworks.stop();
+                clearTimeout(timer);
+            };
+        }
+    }, [isClosed, pokemonEntry.id]);
+
     return (
-        <Card className="relative p-5 bg-white shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in">
+        <Card
+            className={`relative p-5 shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in ${
+                isClosed ? "bg-yellow-200" : "bg-white"
+            }`}
+        >
             {/* Mülleimer-Icon */}
             <button
                 className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
@@ -92,8 +140,16 @@ function PokemonCard({
                 <Trash2 size={20} />
             </button>
 
+            {/* Feuerwerk-Container */}
+            {isClosed && (
+                <div
+                    id={`fireworks-${pokemonEntry.id}`}
+                    className="pointer-events-none absolute inset-0 overflow-hidden"
+                />
+            )}
+
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                {/* Linke Seite: Sprite, Name, englischer Name, Dropdown */}
+                {/* Linke Seite */}
                 <div className="flex items-center gap-4">
                     {spriteUrl && (
                         <img
@@ -103,16 +159,15 @@ function PokemonCard({
                         />
                     )}
                     <div className="flex flex-col">
-            <span className="text-lg font-semibold text-gray-800">
-              {pokemonEntry.name}
-            </span>
+                        <span className="text-lg font-semibold text-gray-800">{pokemonEntry.name}</span>
                         {englishName && (
                             <span className="block text-sm text-gray-500">{englishName}</span>
                         )}
-                        <div className="mt-10">
+                        <div className="mt-4">
                             <Select
                                 value={pokemonEntry.method || ""}
                                 onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
+                                disabled={isClosed}
                             >
                                 <SelectTrigger className="w-[130px] cursor-pointer">
                                     <SelectValue placeholder="Methode auswählen" />
@@ -128,47 +183,63 @@ function PokemonCard({
                     </div>
                 </div>
 
-                {/* Rechter Bereich: Counter */}
-                <div className="flex items-center space-x-3">
-                    <button
-                        onClick={() => updateCounter(pokemonEntry.id, -1)}
-                        className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-                        disabled={pokemonEntry.count === 0}
-                    >
-                        −
-                    </button>
-
-                    {/* Counter-Bereich, entweder readonly Span oder Input */}
-                    {isEditingCount ? (
-                        <input
-                            type="number"
-                            autoFocus
-                            value={tempCount}
-                            onChange={(e) => setTempCount(e.target.value)}
-                            onBlur={saveNewCount}
-                            onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                    e.currentTarget.blur(); // Löst onBlur aus
-                                }
-                            }}
-                            className="w-20 h-10 text-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                    ) : (
-                        <span
-                            onClick={() => setIsEditingCount(true)}
-                            className="w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md cursor-pointer hover:bg-gray-200"
-                            title="Klicken, um manuell zu ändern"
+                {/* Rechter Bereich: Counter & Button */}
+                <div className="flex flex-col items-center space-y-3">
+                    <div className="flex items-center space-x-3">
+                        <button
+                            onClick={() => updateCounter(pokemonEntry.id, -1)}
+                            className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            disabled={isClosed || pokemonEntry.count === 0}
                         >
-              {pokemonEntry.count}
-            </span>
-                    )}
+                            −
+                        </button>
 
-                    <button
-                        onClick={() => updateCounter(pokemonEntry.id, +1)}
-                        className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
-                    >
-                        +
-                    </button>
+                        {isEditingCount && !isClosed ? (
+                            <input
+                                type="number"
+                                autoFocus
+                                value={tempCount}
+                                onChange={(e) => setTempCount(e.target.value)}
+                                onBlur={saveNewCount}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.currentTarget.blur();
+                                    }
+                                }}
+                                className="w-20 h-10 text-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                        ) : (
+                            <span
+                                onClick={() => {
+                                    if (!isClosed) setIsEditingCount(true);
+                                }}
+                                className={`w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md ${
+                                    isClosed ? "" : "cursor-pointer hover:bg-gray-200"
+                                }`}
+                                title="Klicken, um manuell zu ändern"
+                            >
+                {pokemonEntry.count}
+              </span>
+                        )}
+
+                        <button
+                            onClick={() => updateCounter(pokemonEntry.id, +1)}
+                            className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
+                            disabled={isClosed}
+                        >
+                            +
+                        </button>
+                    </div>
+
+                    {/* Neuer Button: Suche beenden */}
+                    {!isClosed && (
+                        <Button
+                            onClick={() => closeSearch(pokemonEntry.id)}
+                            className="bg-yellow-500 text-white font-semibold px-4 py-2 rounded-md hover:bg-yellow-600 transition cursor-pointer"
+                        >
+                            Suche beenden
+                        </Button>
+                    )}
                 </div>
             </div>
         </Card>
@@ -177,18 +248,14 @@ function PokemonCard({
 
 export default function Home() {
     const [pokemonName, setPokemonName] = useState("");
-    const [counters, setCounters] = useState<
-        { id: string; name: string; count: number; created_at: string; method: string }[]
-    >([]);
+    const [counters, setCounters] = useState<PokemonEntry[]>([]);
     const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
     const [errorMessage, setErrorMessage] = useState("");
 
     // Hilfsfunktion: Gibt den offiziellen englischen Namen zurück.
     const getEnglishName = (inputName: string) => {
         const lowerName = inputName.toLowerCase();
-        const indexInGerman = germanPokemonNames.findIndex(
-            (name) => name.toLowerCase() === lowerName
-        );
+        const indexInGerman = germanPokemonNames.findIndex((name) => name.toLowerCase() === lowerName);
         if (indexInGerman !== -1) {
             return englishPokemonNames[indexInGerman];
         }
@@ -201,7 +268,7 @@ export default function Home() {
         return "";
     };
 
-    // Laden der Einträge aus Supabase
+    // Daten laden
     useEffect(() => {
         const fetchPokemon = async () => {
             const { data, error } = await supabase
@@ -209,15 +276,14 @@ export default function Home() {
                 .select("*")
                 .order("created_at", { ascending: false });
             if (error) console.error("Fehler beim Laden:", error);
-            else setCounters(data || []);
+            else setCounters((data as PokemonEntry[]) || []);
         };
         fetchPokemon();
     }, []);
 
-    // Fügt ein neues Pokémon hinzu
+    // Neues Pokémon
     const addPokemon = async () => {
         const trimmedName = pokemonName.trim();
-
         if (!trimmedName) {
             setErrorMessage(
                 "Hey Trainer, ohne Namen kann dein Pokémon nicht auftauchen! Versuch's nochmal."
@@ -225,45 +291,42 @@ export default function Home() {
             return;
         }
 
-        if (trimmedName !== "") {
-            // Validierung
-            const allowed = [...new Set([...germanPokemonNames, ...englishPokemonNames])].map((n) =>
-                n.toLowerCase()
+        const allowed = allPokemonNames.map((n) => n.toLowerCase());
+        if (!allowed.includes(trimmedName.toLowerCase())) {
+            setErrorMessage(
+                "Oh nein! Dieses Pokémon ist so geheim, dass selbst Professor Eich es nicht im Pokedex finden konnte. Bitte gib einen bekannten Namen ein!"
             );
-            if (!allowed.includes(trimmedName.toLowerCase())) {
-                setErrorMessage(
-                    "Oh nein! Dieses Pokémon ist so geheim, dass selbst Professor Eich es nicht im Pokedex finden konnte. Bitte gib einen bekannten Namen ein!"
-                );
-                return;
-            }
-            setErrorMessage("");
-
-            const { data, error } = await supabase
-                .from("pokemon_counters")
-                .insert([
-                    {
-                        name: trimmedName,
-                        count: 0,
-                        created_at: new Date(),
-                        method: "",
-                    },
-                ])
-                .select()
-                .order("created_at", { ascending: false });
-            if (error) {
-                console.error(error);
-            } else if (data) {
-                setCounters((prev) => [...data, ...prev]);
-            }
-            setPokemonName("");
+            return;
         }
+        setErrorMessage("");
+
+        // Neu: status="open"
+        const { data, error } = await supabase
+            .from("pokemon_counters")
+            .insert([
+                {
+                    name: trimmedName,
+                    count: 0,
+                    created_at: new Date(),
+                    method: "",
+                    status: "open",
+                },
+            ])
+            .select()
+            .order("created_at", { ascending: false });
+        if (error) {
+            console.error(error);
+        } else if (data) {
+            setCounters((prev) => [...data, ...prev]);
+        }
+        setPokemonName("");
     };
 
-    // Erhöht/Erniedrigt den Counter um delta
+    // Zähler ändern
     const updateCounter = async (id: string, delta: number) => {
-        const updatedPokemon = counters.find((p) => p.id === id);
-        if (!updatedPokemon) return;
-        const newCount = updatedPokemon.count + delta;
+        const entry = counters.find((p) => p.id === id);
+        if (!entry) return;
+        const newCount = entry.count + delta;
 
         const { error } = await supabase
             .from("pokemon_counters")
@@ -277,31 +340,47 @@ export default function Home() {
         }
     };
 
-    // Aktualisiert die Methode in der Datenbank
+    // Methode ändern
     const updateMethod = async (id: string, newMethod: string) => {
         const { error } = await supabase
             .from("pokemon_counters")
             .update({ method: newMethod })
             .eq("id", id);
-        if (error) {
-            console.error("Fehler beim Aktualisieren der Methode:", error);
-        } else {
+        if (error) console.error("Fehler beim Aktualisieren der Methode:", error);
+        else {
             setCounters((prev) =>
                 prev.map((p) => (p.id === id ? { ...p, method: newMethod } : p))
             );
         }
     };
 
-    // Bestätigt das Löschen
+    // Suche abschließen (status = "closed")
+    const closeSearch = async (id: string) => {
+        const entry = counters.find((p) => p.id === id);
+        if (!entry) return;
+
+        const { error } = await supabase
+            .from("pokemon_counters")
+            .update({ status: "closed" })
+            .eq("id", id);
+        if (error) {
+            console.error("Fehler beim Schließen der Suche:", error);
+        } else {
+            setCounters((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, status: "closed" } : p))
+            );
+        }
+    };
+
+    // Löschen
     const confirmDelete = async () => {
         if (!deleteTarget) return;
         const { error } = await supabase
             .from("pokemon_counters")
             .delete()
             .eq("id", deleteTarget.id);
-        if (error) {
-            console.error("Fehler beim Löschen:", error);
-        } else {
+        if (error) console.error("Fehler beim Löschen:", error);
+        else {
             setCounters((prev) => prev.filter((p) => p.id !== deleteTarget.id));
         }
         setDeleteTarget(null);
@@ -314,6 +393,7 @@ export default function Home() {
                     Shiny Pokémon Counter
                 </h1>
 
+                {/* Formular */}
                 <div className="flex flex-col space-y-2 mb-6">
                     <div className="flex space-x-2">
                         <Input
@@ -344,7 +424,7 @@ export default function Home() {
                     </datalist>
                 </div>
 
-                {/* Liste der Pokémon mit Countern */}
+                {/* Liste der Pokémon */}
                 <div className="space-y-4">
                     {counters.map((p) => {
                         const englishName = getEnglishName(p.name);
@@ -355,6 +435,7 @@ export default function Home() {
                                 englishName={englishName}
                                 updateCounter={updateCounter}
                                 updateMethod={updateMethod}
+                                closeSearch={closeSearch}
                                 setDeleteTarget={setDeleteTarget}
                             />
                         );
