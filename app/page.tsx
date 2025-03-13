@@ -20,6 +20,9 @@ import pokemon from "pokemon";
 const germanPokemonNames = pokemon.all("de");
 const englishPokemonNames = pokemon.all();
 
+// Kombinierte Liste (als Set, um Duplikate zu vermeiden)
+const allPokemonNames = [...new Set([...germanPokemonNames, ...englishPokemonNames])];
+
 // Komponente für die einzelnen Pokémon-Karten
 function PokemonCard({
                          pokemonEntry,
@@ -97,7 +100,7 @@ function PokemonCard({
                             <SelectContent>
                                 <SelectItem value="Masuda">Masuda</SelectItem>
                                 <SelectItem value="Egg">Ei</SelectItem>
-                                <SelectItem value="Reset">Startreset</SelectItem>
+                                <SelectItem value="Reset">Softreset</SelectItem>
                                 <SelectItem value="Chain">Chain</SelectItem>
                             </SelectContent>
                         </Select>
@@ -177,13 +180,9 @@ export default function Home() {
     const addPokemon = async () => {
         const trimmedName = pokemonName.trim();
         if (trimmedName !== "") {
-            // Überprüfen, ob der eingegebene Name in der deutschen ODER in der englischen Liste existiert (Case-insensitiv)
-            const allowedGerman = germanPokemonNames.map((name) => name.toLowerCase());
-            const allowedEnglish = englishPokemonNames.map((name) => name.toLowerCase());
-            if (
-                !allowedGerman.includes(trimmedName.toLowerCase()) &&
-                !allowedEnglish.includes(trimmedName.toLowerCase())
-            ) {
+            // Überprüfen, ob der eingegebene Name in der kombinierten Liste existiert (Case-insensitiv)
+            const allowed = allPokemonNames.map((name) => name.toLowerCase());
+            if (!allowed.includes(trimmedName.toLowerCase())) {
                 setErrorMessage(
                     "Oh nein! Dieses Pokémon ist so geheim, dass selbst Professor Eich es nicht im Pokedex finden konnte. Bitte gib einen bekannten Namen ein!"
                 );
@@ -264,11 +263,12 @@ export default function Home() {
                     Shiny Pokémon Counter
                 </h1>
 
-                {/* Formular für neues Pokémon */}
+                {/* Formular für neues Pokémon mit Datalist für Vorschläge */}
                 <div className="flex flex-col space-y-2 mb-6">
                     <div className="flex space-x-2">
                         <Input
                             type="text"
+                            list="pokemonSuggestions"
                             value={pokemonName}
                             onChange={(e) => setPokemonName(e.target.value)}
                             placeholder="Pokémon eingeben..."
@@ -284,6 +284,11 @@ export default function Home() {
                     {errorMessage && (
                         <p className="text-red-600 text-sm">{errorMessage}</p>
                     )}
+                    <datalist id="pokemonSuggestions">
+                        {allPokemonNames.map((name) => (
+                            <option key={name} value={name} />
+                        ))}
+                    </datalist>
                 </div>
 
                 {/* Liste der Pokémon mit Countern */}
