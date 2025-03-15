@@ -41,6 +41,7 @@ function PokemonCard({
                          updateCounter,
                          updateMethod,
                          closeSearch,
+                         openSearch,
                          setDeleteTarget,
                      }: {
     pokemonEntry: PokemonEntry;
@@ -48,6 +49,7 @@ function PokemonCard({
     updateCounter: (id: string, delta: number) => void;
     updateMethod: (id: string, newMethod: string) => void;
     closeSearch: (id: string) => void;
+    openSearch: (id: string) => void; // Neu
     setDeleteTarget: (target: { id: string; name: string } | null) => void;
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
@@ -91,7 +93,7 @@ function PokemonCard({
     // Status "closed" => Karte ist beendet
     const isClosed = pokemonEntry.status === "closed";
 
-    // Feuerwerk-Logik
+    // Feuerwerk, wenn "closed"
     useEffect(() => {
         if (isClosed) {
             const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
@@ -232,8 +234,15 @@ function PokemonCard({
                         </Select>
                     </div>
 
-                    {/* Suche beenden-Button (nur wenn status=open) */}
-                    {!isClosed && (
+                    {/* Button: "Suche beenden" oder "Wieder öffnen" */}
+                    {isClosed ? (
+                        <Button
+                            onClick={() => openSearch(pokemonEntry.id)}
+                            className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700 transition cursor-pointer"
+                        >
+                            Wieder öffnen
+                        </Button>
+                    ) : (
                         <Button
                             onClick={() => closeSearch(pokemonEntry.id)}
                             className="bg-yellow-500 text-white font-semibold px-4 py-2 rounded-md hover:bg-yellow-600 transition cursor-pointer"
@@ -378,6 +387,24 @@ export default function Home() {
         }
     };
 
+    // Neu: Suche wieder öffnen
+    const openSearch = async (id: string) => {
+        const entry = counters.find((p) => p.id === id);
+        if (!entry) return;
+
+        const { error } = await supabase
+            .from("pokemon_counters")
+            .update({ status: "open" })
+            .eq("id", id);
+        if (error) {
+            console.error("Fehler beim Wiederöffnen der Suche:", error);
+        } else {
+            setCounters((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, status: "open" } : p))
+            );
+        }
+    };
+
     // Löschen
     const confirmDelete = async () => {
         if (!deleteTarget) return;
@@ -480,6 +507,7 @@ export default function Home() {
                                 updateCounter={updateCounter}
                                 updateMethod={updateMethod}
                                 closeSearch={closeSearch}
+                                openSearch={openSearch} // Neu
                                 setDeleteTarget={setDeleteTarget}
                             />
                         );
