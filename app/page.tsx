@@ -256,6 +256,7 @@ function PokemonCard({
                                 <SelectItem value="Egg">Ei</SelectItem>
                                 <SelectItem value="Reset">Softreset</SelectItem>
                                 <SelectItem value="Chain">Chain</SelectItem>
+                                <SelectItem value="PokeRadar">PokéRadar</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
