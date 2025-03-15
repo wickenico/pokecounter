@@ -29,7 +29,7 @@ interface PokemonEntry {
     id: string;
     name: string;
     count: number;
-    created_at: string;
+    created_at: string; // ← Wichtig für das Datum
     method: string;
     status: string; // "open" oder "closed"
     game: string | null;
@@ -92,7 +92,6 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
-    // Abgeschlossen?
     const isClosed = pokemonEntry.status === "closed";
 
     // Feuerwerk bei closed
@@ -129,6 +128,9 @@ function PokemonCard({
         }
     }, [isClosed, pokemonEntry.id]);
 
+    // Datum formatieren
+    const startDate = new Date(pokemonEntry.created_at).toLocaleDateString();
+
     return (
         <Card
             className={`relative p-0 shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in ${
@@ -143,9 +145,8 @@ function PokemonCard({
                 />
             )}
 
-            {/* Kopfzeile mit grauem Hintergrund, schwarze Linie unten */}
+            {/* Kopfzeile */}
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-t-xl border-b border-black">
-                {/* Deutscher Name (fett) + Englischer Name daneben */}
                 <div className="flex items-center space-x-3">
           <span className="text-lg font-semibold text-gray-800">
             {pokemonEntry.name}
@@ -154,8 +155,6 @@ function PokemonCard({
                         <span className="text-sm text-gray-500">{englishName}</span>
                     )}
                 </div>
-
-                {/* Mülleimer-Icon rechts */}
                 <button
                     className="text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
                     onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
@@ -166,14 +165,20 @@ function PokemonCard({
 
             {/* Mittelteil: Sprite links, Dropdowns + Button rechts */}
             <div className="px-4 pt-4 flex flex-row gap-6 items-center justify-between">
-                {/* Sprite links */}
-                {spriteUrl && (
-                    <img
-                        src={spriteUrl}
-                        alt={`Shiny sprite of ${englishName}`}
-                        className="w-36 h-36"
-                    />
-                )}
+                {/* Sprite + Startdatum */}
+                <div className="flex flex-col items-center">
+                    {spriteUrl && (
+                        <img
+                            src={spriteUrl}
+                            alt={`Shiny sprite of ${englishName}`}
+                            className="w-36 h-36"
+                        />
+                    )}
+                    {/* Startdatum unter dem Sprite */}
+                    <span className="mt-2 text-xs text-gray-600">
+            Gestartet am: {startDate}
+          </span>
+                </div>
 
                 {/* Rechte Spalte: Methode-Dropdown, Spiel-Dropdown, Button */}
                 <div className="flex flex-col items-center space-y-3">
@@ -236,9 +241,8 @@ function PokemonCard({
                 </div>
             </div>
 
-            {/* Fußzeile: Counter mittig, vertikal zentriert */}
+            {/* Fußzeile: Counter */}
             <div className="px-4 py-3 bg-gray-50 flex items-center justify-center border-t border-black">
-                {/* Minus-Button */}
                 <button
                     onClick={() => updateCounter(pokemonEntry.id, -1)}
                     className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
@@ -246,8 +250,6 @@ function PokemonCard({
                 >
                     −
                 </button>
-
-                {/* Counter-Zahl (editierbar) */}
                 {isEditingCount && !isClosed ? (
                     <input
                         type="number"
@@ -275,8 +277,6 @@ function PokemonCard({
             {pokemonEntry.count}
           </span>
                 )}
-
-                {/* Plus-Button */}
                 <button
                     onClick={() => updateCounter(pokemonEntry.id, +1)}
                     className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
