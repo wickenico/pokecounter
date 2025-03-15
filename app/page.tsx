@@ -209,12 +209,12 @@ function PokemonCard({
                             onValueChange={(val) => updateGame(pokemonEntry.id, val)}
                             disabled={isClosed}
                         >
-                            <SelectTrigger className="cursor-pointer">
+                            <SelectTrigger className="cursor-pointer text-xs">
                                 <SelectValue placeholder="Spiel auswählen" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="text-xs">
                                 {pokemonGames.map((g) => (
-                                    <SelectItem key={g.name} value={g.name}>
+                                    <SelectItem key={g.name} value={g.name} className="text-xs">
                                         {g.name}
                                     </SelectItem>
                                 ))}
