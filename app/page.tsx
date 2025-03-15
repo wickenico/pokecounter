@@ -18,7 +18,9 @@ import { Badge } from "@/components/ui/badge";
 import pokemon from "pokemon";
 import { Fireworks } from "fireworks-js";
 
-// Statische Arrays für die Übersetzungen
+// Importiere die Spiele aus deiner JSON-Datei:
+import pokemonGames from "../data/games.json";
+
 const germanPokemonNames = pokemon.all("de");
 const englishPokemonNames = pokemon.all();
 
@@ -32,29 +34,31 @@ interface PokemonEntry {
     created_at: string;
     method: string;
     status: string; // "open" oder "closed"
+    game: string | null; // Neu: game-Feld
 }
 
-// Einzelne Pokémon-Karte
 function PokemonCard({
                          pokemonEntry,
                          englishName,
                          updateCounter,
                          updateMethod,
                          closeSearch,
-                         openSearch,
+                         reopenSearch,
                          setDeleteTarget,
+                         updateGame,
                      }: {
     pokemonEntry: PokemonEntry;
     englishName: string;
     updateCounter: (id: string, delta: number) => void;
     updateMethod: (id: string, newMethod: string) => void;
     closeSearch: (id: string) => void;
-    openSearch: (id: string) => void; // Neu
+    reopenSearch: (id: string) => void;
     setDeleteTarget: (target: { id: string; name: string } | null) => void;
+    updateGame: (id: string, newGame: string) => void;
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
 
-    // Für das manuelle Bearbeiten des Counters
+    // Lokaler State fürs manuelle Bearbeiten des Counters
     const [isEditingCount, setIsEditingCount] = useState(false);
     const [tempCount, setTempCount] = useState(String(pokemonEntry.count));
 
@@ -76,7 +80,7 @@ function PokemonCard({
         }
     }, [englishName]);
 
-    // Neuen Zählerwert übernehmen
+    // Speichert den neuen Zählerwert
     const saveNewCount = () => {
         const newValue = parseInt(tempCount, 10);
         if (isNaN(newValue)) {
@@ -90,10 +94,10 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
-    // Status "closed" => Karte ist beendet
+    // Ist der Eintrag abgeschlossen?
     const isClosed = pokemonEntry.status === "closed";
 
-    // Feuerwerk, wenn "closed"
+    // Feuerwerk-Effekt, wenn `status = "closed"`
     useEffect(() => {
         if (isClosed) {
             const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
@@ -133,7 +137,7 @@ function PokemonCard({
                 isClosed ? "bg-yellow-200" : "bg-white"
             }`}
         >
-            {/* Mülleimer-Icon */}
+            {/* Mülleimer-Icon zum Löschen */}
             <button
                 className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
                 onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
@@ -141,7 +145,7 @@ function PokemonCard({
                 <Trash2 size={20} />
             </button>
 
-            {/* Feuerwerk, wenn status=closed */}
+            {/* Feuerwerk-Overlay, falls geschlossen */}
             {isClosed && (
                 <div
                     id={`fireworks-${pokemonEntry.id}`}
@@ -149,7 +153,7 @@ function PokemonCard({
                 />
             )}
 
-            {/* Neue Struktur: Links Sprite + Namen, Rechts Counter + Methode + Button */}
+            {/* Layout: Links Sprite + Namen + Spiel, Rechts Counter + Methode + Button */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
                 {/* Linke Spalte */}
                 <div className="flex flex-col items-center">
@@ -160,15 +164,39 @@ function PokemonCard({
                             className="w-36 h-36 mb-2"
                         />
                     )}
-                    <span className="text-lg font-semibold text-gray-800">{pokemonEntry.name}</span>
+                    {/* Deutscher Name */}
+                    <span className="text-lg font-semibold text-gray-800">
+            {pokemonEntry.name}
+          </span>
+                    {/* Englischer Name */}
                     {englishName && (
                         <span className="text-sm text-gray-500">{englishName}</span>
                     )}
+
+                    {/* Spiel-Dropdown unter den Namen */}
+                    <div className="w-[200px] mt-2">
+                        <Select
+                            value={pokemonEntry.game || ""}
+                            onValueChange={(val) => updateGame(pokemonEntry.id, val)}
+                            disabled={isClosed}
+                        >
+                            <SelectTrigger className="cursor-pointer">
+                                <SelectValue placeholder="Spiel auswählen" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {pokemonGames.map((g) => (
+                                    <SelectItem key={g.name} value={g.name}>
+                                        {g.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </div>
 
                 {/* Rechte Spalte */}
                 <div className="flex flex-col items-center gap-4">
-                    {/* Counter (Minus / Count / Plus) */}
+                    {/* Counter-Bereich */}
                     <div className="flex items-center space-x-3">
                         <button
                             onClick={() => updateCounter(pokemonEntry.id, -1)}
@@ -177,7 +205,6 @@ function PokemonCard({
                         >
                             −
                         </button>
-
                         {isEditingCount && !isClosed ? (
                             <input
                                 type="number"
@@ -205,7 +232,6 @@ function PokemonCard({
                 {pokemonEntry.count}
               </span>
                         )}
-
                         <button
                             onClick={() => updateCounter(pokemonEntry.id, +1)}
                             className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
@@ -234,11 +260,11 @@ function PokemonCard({
                         </Select>
                     </div>
 
-                    {/* Button: "Suche beenden" oder "Wieder öffnen" */}
-                    {isClosed ? (
+                    {/* Button für Suche beenden / wieder öffnen */}
+                    {pokemonEntry.status === "closed" ? (
                         <Button
-                            onClick={() => openSearch(pokemonEntry.id)}
-                            className="bg-blue-600 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-700 transition cursor-pointer"
+                            onClick={() => reopenSearch(pokemonEntry.id)}
+                            className="bg-blue-500 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-600 transition cursor-pointer"
                         >
                             Wieder öffnen
                         </Button>
@@ -325,6 +351,7 @@ export default function Home() {
                     created_at: new Date(),
                     method: "",
                     status: "open",
+                    game: "", // Default-Wert
                 },
             ])
             .select()
@@ -369,6 +396,21 @@ export default function Home() {
         }
     };
 
+    // Spiel ändern
+    const updateGame = async (id: string, newGame: string) => {
+        const { error } = await supabase
+            .from("pokemon_counters")
+            .update({ game: newGame })
+            .eq("id", id);
+        if (error) {
+            console.error("Fehler beim Aktualisieren des Spiels:", error);
+        } else {
+            setCounters((prev) =>
+                prev.map((p) => (p.id === id ? { ...p, game: newGame } : p))
+            );
+        }
+    };
+
     // Suche abschließen
     const closeSearch = async (id: string) => {
         const entry = counters.find((p) => p.id === id);
@@ -387,8 +429,8 @@ export default function Home() {
         }
     };
 
-    // Neu: Suche wieder öffnen
-    const openSearch = async (id: string) => {
+    // Suche wieder öffnen
+    const reopenSearch = async (id: string) => {
         const entry = counters.find((p) => p.id === id);
         if (!entry) return;
 
@@ -397,7 +439,7 @@ export default function Home() {
             .update({ status: "open" })
             .eq("id", id);
         if (error) {
-            console.error("Fehler beim Wiederöffnen der Suche:", error);
+            console.error("Fehler beim Wiederöffnen:", error);
         } else {
             setCounters((prev) =>
                 prev.map((p) => (p.id === id ? { ...p, status: "open" } : p))
@@ -468,7 +510,6 @@ export default function Home() {
 
                 {/* Filter-Badges */}
                 <div className="flex space-x-2 mb-4">
-                    {/* Badge für "Offen" */}
                     <Badge
                         variant="outline"
                         className={`cursor-pointer px-3 py-1 rounded-full transition-colors ${
@@ -480,8 +521,6 @@ export default function Home() {
                     >
                         Offen
                     </Badge>
-
-                    {/* Badge für "Beendet" */}
                     <Badge
                         variant="outline"
                         className={`cursor-pointer px-3 py-1 rounded-full transition-colors ${
@@ -506,8 +545,9 @@ export default function Home() {
                                 englishName={englishName}
                                 updateCounter={updateCounter}
                                 updateMethod={updateMethod}
+                                updateGame={updateGame}   // Neu
                                 closeSearch={closeSearch}
-                                openSearch={openSearch} // Neu
+                                reopenSearch={reopenSearch}
                                 setDeleteTarget={setDeleteTarget}
                             />
                         );
@@ -523,8 +563,8 @@ export default function Home() {
                             Pokémon freilassen?
                         </h2>
                         <p className="text-sm text-gray-700 text-center my-3">
-                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis entlassen
-                            möchtest?
+                            Bist du sicher, dass du <strong>{deleteTarget.name}</strong> in die Wildnis
+                            entlassen möchtest?
                             <br />
                             <span className="italic text-gray-500">
                 &#34;Ein wildes {deleteTarget.name} verschwand in hohem Gras...&#34;
