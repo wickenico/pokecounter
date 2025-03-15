@@ -17,8 +17,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import pokemon from "pokemon";
 import { Fireworks } from "fireworks-js";
-
-// Importiere die Spiele aus deiner JSON-Datei:
 import pokemonGames from "../data/games.json";
 
 const germanPokemonNames = pokemon.all("de");
@@ -34,7 +32,7 @@ interface PokemonEntry {
     created_at: string;
     method: string;
     status: string; // "open" oder "closed"
-    game: string | null; // Neu: game-Feld
+    game: string | null;
 }
 
 function PokemonCard({
@@ -58,7 +56,7 @@ function PokemonCard({
 }) {
     const [spriteUrl, setSpriteUrl] = useState<string | null>(null);
 
-    // Lokaler State fürs manuelle Bearbeiten des Counters
+    // Für das manuelle Bearbeiten des Counters
     const [isEditingCount, setIsEditingCount] = useState(false);
     const [tempCount, setTempCount] = useState(String(pokemonEntry.count));
 
@@ -80,7 +78,7 @@ function PokemonCard({
         }
     }, [englishName]);
 
-    // Speichert den neuen Zählerwert
+    // Zählerwert speichern
     const saveNewCount = () => {
         const newValue = parseInt(tempCount, 10);
         if (isNaN(newValue)) {
@@ -94,10 +92,10 @@ function PokemonCard({
         setIsEditingCount(false);
     };
 
-    // Ist der Eintrag abgeschlossen?
+    // Abgeschlossen?
     const isClosed = pokemonEntry.status === "closed";
 
-    // Feuerwerk-Effekt, wenn `status = "closed"`
+    // Feuerwerk bei closed
     useEffect(() => {
         if (isClosed) {
             const container = document.getElementById(`fireworks-${pokemonEntry.id}`);
@@ -133,19 +131,11 @@ function PokemonCard({
 
     return (
         <Card
-            className={`relative p-5 shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in ${
+            className={`relative p-0 shadow-lg rounded-xl transition-all transform hover:scale-105 hover:shadow-xl fade-in ${
                 isClosed ? "bg-yellow-200" : "bg-white"
             }`}
         >
-            {/* Mülleimer-Icon zum Löschen */}
-            <button
-                className="absolute top-3 right-3 text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
-                onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
-            >
-                <Trash2 size={20} />
-            </button>
-
-            {/* Feuerwerk-Overlay, falls geschlossen */}
+            {/* Feuerwerk-Overlay bei geschlossenem Status */}
             {isClosed && (
                 <div
                     id={`fireworks-${pokemonEntry.id}`}
@@ -153,28 +143,62 @@ function PokemonCard({
                 />
             )}
 
-            {/* Layout: Links Sprite + Namen + Spiel, Rechts Counter + Methode + Button */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                {/* Linke Spalte */}
-                <div className="flex flex-col items-center">
-                    {spriteUrl && (
-                        <img
-                            src={spriteUrl}
-                            alt={`Shiny sprite of ${englishName}`}
-                            className="w-36 h-36 mb-2"
-                        />
-                    )}
-                    {/* Deutscher Name */}
-                    <span className="text-lg font-semibold text-gray-800">
+            {/* Kopfzeile mit grauem Hintergrund, schwarze Linie unten */}
+            <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-t-xl border-b border-black">
+                {/* Deutscher Name (fett) + Englischer Name daneben */}
+                <div className="flex items-center space-x-3">
+          <span className="text-lg font-semibold text-gray-800">
             {pokemonEntry.name}
           </span>
-                    {/* Englischer Name */}
                     {englishName && (
                         <span className="text-sm text-gray-500">{englishName}</span>
                     )}
+                </div>
 
-                    {/* Spiel-Dropdown unter den Namen */}
-                    <div className="w-[200px] mt-2">
+                {/* Mülleimer-Icon rechts */}
+                <button
+                    className="text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
+                    onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
+                >
+                    <Trash2 size={20} />
+                </button>
+            </div>
+
+            {/* Mittelteil: Sprite links, Dropdowns + Button rechts */}
+            <div className="px-4 pt-4 flex flex-row gap-6 items-center justify-between">
+                {/* Sprite links */}
+                {spriteUrl && (
+                    <img
+                        src={spriteUrl}
+                        alt={`Shiny sprite of ${englishName}`}
+                        className="w-36 h-36"
+                    />
+                )}
+
+                {/* Rechte Spalte: Methode-Dropdown, Spiel-Dropdown, Button */}
+                <div className="flex flex-col items-center space-y-3">
+                    {/* Methode-Dropdown */}
+                    <div className="w-[130px]">
+                        <Select
+                            value={pokemonEntry.method || ""}
+                            onValueChange={(val) => updateMethod(pokemonEntry.id, val)}
+                            disabled={isClosed}
+                        >
+                            <SelectTrigger className="cursor-pointer">
+                                <SelectValue placeholder="Methode" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="Masuda">Masuda</SelectItem>
+                                <SelectItem value="Egg">Ei</SelectItem>
+                                <SelectItem value="Reset">Softreset</SelectItem>
+                                <SelectItem value="Chain">Chain</SelectItem>
+                                <SelectItem value="PokeRadar">PokéRadar</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {/* Spiel-Dropdown */}
+                    <div className="w-[200px]">
                         <Select
                             value={pokemonEntry.game || ""}
                             onValueChange={(val) => updateGame(pokemonEntry.id, val)}
@@ -192,77 +216,9 @@ function PokemonCard({
                             </SelectContent>
                         </Select>
                     </div>
-                </div>
 
-                {/* Rechte Spalte */}
-                <div className="flex flex-col items-center gap-4">
-                    {/* Counter-Bereich */}
-                    <div className="flex items-center space-x-3">
-                        <button
-                            onClick={() => updateCounter(pokemonEntry.id, -1)}
-                            className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
-                            disabled={isClosed || pokemonEntry.count === 0}
-                        >
-                            −
-                        </button>
-                        {isEditingCount && !isClosed ? (
-                            <input
-                                type="number"
-                                autoFocus
-                                value={tempCount}
-                                onChange={(e) => setTempCount(e.target.value)}
-                                onBlur={saveNewCount}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.currentTarget.blur();
-                                    }
-                                }}
-                                className="w-20 h-10 text-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        ) : (
-                            <span
-                                onClick={() => {
-                                    if (!isClosed) setIsEditingCount(true);
-                                }}
-                                className={`w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md ${
-                                    isClosed ? "" : "cursor-pointer hover:bg-gray-200"
-                                }`}
-                                title="Klicken, um manuell zu ändern"
-                            >
-                {pokemonEntry.count}
-              </span>
-                        )}
-                        <button
-                            onClick={() => updateCounter(pokemonEntry.id, +1)}
-                            className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
-                            disabled={isClosed}
-                        >
-                            +
-                        </button>
-                    </div>
-
-                    {/* Methode-Dropdown */}
-                    <div className="w-[130px]">
-                        <Select
-                            value={pokemonEntry.method || ""}
-                            onValueChange={(newMethod) => updateMethod(pokemonEntry.id, newMethod)}
-                            disabled={isClosed}
-                        >
-                            <SelectTrigger className="cursor-pointer">
-                                <SelectValue placeholder="Methode" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="Masuda">Masuda</SelectItem>
-                                <SelectItem value="Egg">Ei</SelectItem>
-                                <SelectItem value="Reset">Softreset</SelectItem>
-                                <SelectItem value="Chain">Chain</SelectItem>
-                                <SelectItem value="PokeRadar">PokéRadar</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Button für Suche beenden / wieder öffnen */}
-                    {pokemonEntry.status === "closed" ? (
+                    {/* Button: Suche beenden / wieder öffnen */}
+                    {isClosed ? (
                         <Button
                             onClick={() => reopenSearch(pokemonEntry.id)}
                             className="bg-blue-500 text-white font-semibold px-4 py-2 rounded-md hover:bg-blue-600 transition cursor-pointer"
@@ -278,6 +234,56 @@ function PokemonCard({
                         </Button>
                     )}
                 </div>
+            </div>
+
+            {/* Fußzeile: Counter mittig, vertikal zentriert */}
+            <div className="px-4 py-3 bg-gray-50 flex items-center justify-center border-t border-black">
+                {/* Minus-Button */}
+                <button
+                    onClick={() => updateCounter(pokemonEntry.id, -1)}
+                    className="bg-red-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-red-600 active:scale-95 cursor-pointer disabled:bg-gray-400 disabled:cursor-not-allowed"
+                    disabled={isClosed || pokemonEntry.count === 0}
+                >
+                    −
+                </button>
+
+                {/* Counter-Zahl (editierbar) */}
+                {isEditingCount && !isClosed ? (
+                    <input
+                        type="number"
+                        autoFocus
+                        value={tempCount}
+                        onChange={(e) => setTempCount(e.target.value)}
+                        onBlur={saveNewCount}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.currentTarget.blur();
+                            }
+                        }}
+                        className="w-20 h-10 mx-3 text-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                ) : (
+                    <span
+                        onClick={() => {
+                            if (!isClosed) setIsEditingCount(true);
+                        }}
+                        className={`mx-3 w-20 h-10 flex items-center justify-center text-lg font-bold text-gray-900 bg-gray-100 rounded-lg shadow-md ${
+                            isClosed ? "" : "cursor-pointer hover:bg-gray-200"
+                        }`}
+                        title="Klicken, um manuell zu ändern"
+                    >
+            {pokemonEntry.count}
+          </span>
+                )}
+
+                {/* Plus-Button */}
+                <button
+                    onClick={() => updateCounter(pokemonEntry.id, +1)}
+                    className="bg-green-500 text-white font-semibold px-5 py-2 rounded-md shadow-md transition-all transform hover:scale-105 hover:bg-green-600 active:scale-95 cursor-pointer"
+                    disabled={isClosed}
+                >
+                    +
+                </button>
             </div>
         </Card>
     );
