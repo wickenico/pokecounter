@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import Layout from "@/components/Layout";
-import { Trash2, Plus } from "lucide-react";
+import {Trash2, Plus, ExternalLink} from "lucide-react";
 import {
     Select,
     SelectTrigger,
@@ -148,19 +148,29 @@ function PokemonCard({
             {/* Kopfzeile */}
             <div className="flex items-center justify-between px-4 py-2 bg-gray-50 rounded-t-xl border-b border-black">
                 <div className="flex items-center space-x-3">
-          <span className="text-lg font-semibold text-gray-800">
-            {pokemonEntry.name}
-          </span>
+      <span className="text-lg font-semibold text-gray-800">
+        {pokemonEntry.name}
+      </span>
                     {englishName && (
                         <span className="text-sm text-gray-500">{englishName}</span>
                     )}
                 </div>
-                <button
-                    className="text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
-                    onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
-                >
-                    <Trash2 size={20} />
-                </button>
+                <div className="flex items-center space-x-3">
+                    <a
+                        href={`https://www.pokewiki.de/${pokemonEntry.name}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-gray-500 hover:text-blue-500 transition-transform transform hover:scale-110 cursor-pointer"
+                    >
+                        <ExternalLink size={20} />
+                    </a>
+                    <button
+                        className="text-gray-500 hover:text-red-500 transition-transform transform hover:scale-110 cursor-pointer"
+                        onClick={() => setDeleteTarget({ id: pokemonEntry.id, name: pokemonEntry.name })}
+                    >
+                        <Trash2 size={20} />
+                    </button>
+                </div>
             </div>
 
             {/* Mittelteil: Sprite links, Dropdowns + Button rechts */}
